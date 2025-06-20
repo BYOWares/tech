@@ -2,28 +2,49 @@
 
 A collection of tools for technical stuff
 
+## Environment
+
+* IntelliJ IDEA 2025.1.2 (Community Edition)
+* Gradle 8.14.2
+* Java 24
+
+## Custom tasks
+
+* ``./gradlew generateJavaInfoFile`` or ``./gradlew gJIF``: generate java files with information about build.
+* ``./gradlew generatePkgInfoFile``  or ``./gradlew gPIF``: generate package info files for the previously generated
+  java files.
+* ``./gradlew sanitizeVersionsFile`` or ``./gradlew sVF``: sanitize the versions file (versions.yml).
+* ``./gradlew bumpMajorVersion``: increase major version.
+* ``./gradlew bumpMinorVersion``: increase minor version.
+* ``./gradlew bumpPatchVersion``: increase patch version.
+* ``./gradlew updateSinceTag``: update unset `@since` tag in code.
+* ``./gradlew copyLog4J2Conf4Test``: copy the Log4J2 configuration file from the buildSrc to the test resources.
+* ``./gradlew copyLog4J2Conf``: copy the Log4J2 configuration file from the buildSrc to the resources.
+
 ## GIT
 
-In order to share git hooks, the **core.hooksPath** (git >= 2.9) is used on a versioned directory. Therefore, in
-order to use them, you still need to configure the path locally:
-``git config --local core.hooksPath .githooks/``.
+Git hooks are shared in the directory `.githooks/`. Configuring the property **core.hooksPath** (git >= 2.9) is
+required to use them. This configuration is done when running the [setup_project.bash](scripts/setup_project.bash)
+script. You can configure manually by running the following command: ``git config --local core.hooksPath .githooks/``.
 
 ## [Scripts](scripts)
 
 All scripts shall be written in Bash.
 
-The log level can be controlled through an environment property: `LOG_LEVEL`. Allowed levels are (case sensitive):
+Logging level is controlled through an environment property: `LOG_LEVEL`. Allowed levels are (case-sensitive):
+
 * TRACE
 * DEBUG
 * INFO
 * WARN
 * ERROR
 * FATAL
+
 By default, `INFO` is considered.
 
 ### [setup_project.bash](scripts/setup_project.bash)
 
-Run all commands used to setup properly the project.
+Run all commands used to set up properly the project (git hooks).
 
 ### [check_encoding.bash](scripts/check_encoding.bash)
 
