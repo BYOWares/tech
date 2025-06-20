@@ -58,7 +58,7 @@ unique environment variable for each library. Here is the template to follow:
 
 ```bash
 # Those two line make sure this library is sourced
-: ${LIB_DIR:=$(dirname ${BASH_SOURCE[0]})}
+: "${LIB_DIR:=$(dirname "${BASH_SOURCE[0]}")}"
 source "$LIB_DIR/lib.source.bash"
 
 # The unique environment variable that prevents multiple loading. Must start with LIB_
@@ -67,3 +67,7 @@ source "$LIB_DIR/lib.source.bash"
 # How other libraries shall be sourced from a library
 source "$LIB_DIR/lib.util.bash"
 ```
+
+### [run_all_tests.bash](scripts/tests/run_all_tests.bash)
+
+Run all tests (needs manual validation) defined on libraries.
