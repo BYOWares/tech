@@ -18,11 +18,13 @@ package task
 import model.Version
 import model.Versions
 import org.gradle.api.DefaultTask
+import org.gradle.api.Project
 import org.gradle.api.plugins.BasePlugin
 import org.gradle.api.provider.Provider
 import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.TaskAction
 import java.io.File
+import java.util.TreeSet
 
 /**
  * @since XXX
@@ -38,12 +40,25 @@ abstract class SanitizeVersionsFileTask : DefaultTask() {
     @get:InputFile
     abstract var versionsFile: Provider<File>
 
-    private val modules = project.childProjects.keys.toSet()
+    private val modules = findAllModules()
 
     @TaskAction
     fun checkFile() {
         val versions = Versions.parse(versionsFile.get())
         versions.sanitizeModules(modules)
+    }
+
+    fun findAllModules(): Set<String> {
+        val allModules = TreeSet<String>()
+        doFindAllModules(project, allModules)
+        return allModules
+    }
+
+    fun doFindAllModules(project: Project, allModules: MutableSet<String>) {
+        project.childProjects.forEach { (name, p) ->
+            allModules.add(name)
+            doFindAllModules(p, allModules)
+        }
     }
 
     companion object {
