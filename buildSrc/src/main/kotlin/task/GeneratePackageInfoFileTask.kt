@@ -36,7 +36,7 @@ abstract class GeneratePackageInfoFileTask : AbstractGenerateInfoFileTask() {
             /**
              * Information package about the <b>${moduleName()}</b> module
              *
-             * @since ${versions.getModuleFirstVersion(project.name)}
+             * @since ${versions.getModuleFirstVersion(getProjectName())}
              */
             package ${packageName()};
             """.trimIndent()

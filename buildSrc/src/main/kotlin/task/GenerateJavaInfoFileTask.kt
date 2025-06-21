@@ -32,7 +32,7 @@ abstract class GenerateJavaInfoFileTask : AbstractGenerateInfoFileTask() {
     }
 
     @Input
-    val className = project.name.split("-").stream() //
+    val className = getProjectName().split("-").stream() //
         .map { p: String -> p[0].uppercaseChar() + p.substring(1) } //
         .toList().joinToString("") + "Info"
 
@@ -56,7 +56,7 @@ abstract class GenerateJavaInfoFileTask : AbstractGenerateInfoFileTask() {
             /**
              * Information related to the <b>${moduleName()}</b> module
              *
-             * @since ${versions.getModuleFirstVersion(project.name)}
+             * @since ${versions.getModuleFirstVersion(getProjectName())}
              */
             public final class $className {
                 /** Version of the module */

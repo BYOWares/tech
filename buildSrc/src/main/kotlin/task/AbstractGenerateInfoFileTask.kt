@@ -34,6 +34,9 @@ abstract class AbstractGenerateInfoFileTask : DefaultTask() {
         group = BasePlugin.BUILD_GROUP
     }
 
+    private val projectDir = project.projectDir
+    private val projectName = project.name
+
     @get:Input
     abstract var groupId: Provider<String>
 
@@ -51,12 +54,17 @@ abstract class AbstractGenerateInfoFileTask : DefaultTask() {
 
     abstract fun generateBody(versions: Versions): String
 
+    @Input
+    fun getProjectName(): String {
+        return projectName
+    }
+
     fun resolveOutputFile(fileName: String): File {
-        return project.projectDir.resolve("src-generated/main/java/${packageName().replace('.', '/')}/$fileName.java")
+        return projectDir.resolve("src-generated/main/java/${packageName().replace('.', '/')}/$fileName.java")
     }
 
     fun moduleName(): String {
-        return "${groupId.get()}.${baseProjectName.get()}.${project.name.replace('-', '.')}"
+        return "${groupId.get()}.${baseProjectName.get()}.${getProjectName().replace('-', '.')}"
     }
 
     fun packageName(): String {
