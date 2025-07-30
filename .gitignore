@@ -2,7 +2,7 @@
 *.class
 
 # Log file & their rotation
-*/log/
+**/log/
 
 # BlueJ files
 *.ctxt
@@ -30,11 +30,11 @@ replay_pid*
 build
 
 # Ignore generated files
-*/src-generated/
+**/src-generated/
 
 # Log4j2 configuration files
-*/src/main/resources/log4j2.xml
-*/src/test/resources/log4j2-test.xml
+**/src/main/resources/log4j2.xml
+**/src/test/resources/log4j2-test.xml
 
 # idea specifics
 .idea/workspace.xml

@@ -1,0 +1,809 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Vanilla Charts</title>
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+
+    <link href="../../../main/resources/uplot/lib/uPlot.css" rel="stylesheet">
+    <style>
+        html {
+            background-color: pink;
+        }
+        .t-grid {
+            display: grid;
+            grid-template-rows: max-content;
+            grid-auto-rows: max-content;
+            grid-template-columns: repeat(auto-fit, minmax(800px, 1fr));
+            gap: 10px;
+        }
+        .t-container {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            border-style: solid;
+            border-color: blue;
+            padding: 10px;
+            border-width: 3px;
+            border-radius: 5px;
+            background-color: white;
+        }
+        .t-chart {
+            width: calc(100% - 300px);
+            height: 500px;
+        }
+        .t-legend {
+            min-width: 300px;
+            width: 300px;
+            height: auto;
+            font-size: 15px;
+            border-radius: 5px;
+            margin-top: 8px;
+            max-width: inherit;
+            border-color: #b22222;
+            border-style: solid;
+            border-width: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div id="grid" class="t-grid">
+        <div id="u1-container" class="t-container">
+            <div id="u1-chart" class="t-chart"></div>
+            <div id="u1-legend" class="t-legend"></div>
+        </div>
+        <div id="u2-container" class="t-container">
+            <div id="u2-chart" class="t-chart"></div>
+            <div id="u2-legend" class="t-legend"></div>
+        </div>
+        <div id="u3-container" class="t-container">
+            <div id="u3-chart" class="t-chart"></div>
+            <div id="u3-legend" class="t-legend"></div>
+        </div>
+        <div id="u4-container" class="t-container">
+            <div id="u4-chart" class="t-chart"></div>
+            <div id="u4-legend" class="t-legend"></div>
+        </div>
+        <div id="u5-container" class="t-container">
+            <div id="u5-chart" class="t-chart"></div>
+            <div id="u5-legend" class="t-legend"></div>
+        </div>
+        <div id="u6-container" class="t-container">
+            <div id="u6-chart" class="t-chart"></div>
+            <div id="u6-legend" class="t-legend"></div>
+        </div>
+        <div id="u7-container" class="t-container">
+            <div id="u7-chart" class="t-chart"></div>
+            <div id="u7-legend" class="t-legend"></div>
+        </div>
+        <div id="u8-container" class="t-container">
+            <div id="u8-chart" class="t-chart"></div>
+            <div id="u8-legend" class="t-legend"></div>
+        </div>
+    </div>
+<script src="../../../main/resources/uplot/lib/uPlot.iife.js"></script>
+<script>
+    // https://simple.wikipedia.org/wiki/Byte
+    // Kilo, Mega, Giga, Tera, Peta, Exa, Zetta, Yotta
+    const SUFFIXES_10 = ['', 'K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y']
+    // Kibi, Mebi, Gibi, Tebi, Pebi, Exbi, Zebi, Yobi
+    const SUFFIXES_02 = ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi', 'Yi']
+    const SQRT_ONE_THIRD = 1/Math.sqrt(3)
+
+    const PointForm = {
+        CIRCLE: {
+            svg: '',
+            draw: (path, x, y, s, moveTo, arc, lineTo) => {
+                moveTo(path, x+s, y);
+                arc(path, x, y, s, 0, Math.PI * 2);
+            }
+        },
+        SQUARE: {
+            svg: '',
+            draw: (path, x, y, s, moveTo, arc, lineTo) => {
+                moveTo(path, x+s, y+s);
+                lineTo(path, x+s, y-s);
+                lineTo(path, x-s, y-s);
+                lineTo(path, x-s, y+s);
+                lineTo(path, x+s, y+s);
+            }
+        },
+        DIAMOND: {
+            svg: '',
+            draw: (path, x, y, s, moveTo, arc, lineTo) => {
+                // s = s*1.5;
+                moveTo(path, x+s, y);
+                lineTo(path, x, y+s);
+                lineTo(path, x-s, y);
+                lineTo(path, x, y-s);
+                lineTo(path, x+s, y);
+            }
+        },
+        U_TRIANGLE: {
+            svg: '',
+            draw: (path, x, y, s, moveTo, arc, lineTo) => {
+                // s = s*1.5;
+                const h = SQRT_ONE_THIRD * s;
+                moveTo(path, x+s, y+h);
+                lineTo(path, x-s, y+h);
+                lineTo(path, x, y-2*h);
+                lineTo(path, x+s, y+h);
+            }
+        },
+        D_TRIANGLE: {
+            svg: '',
+            draw: (path, x, y, s, moveTo, arc, lineTo) => {
+                // s = s*1.5;
+                const h = SQRT_ONE_THIRD * s;
+                moveTo(path, x+s, y-h);
+                lineTo(path, x-s, y-h);
+                lineTo(path, x, y+2*h);
+                lineTo(path, x+s, y-h);
+            }
+        },
+        SIX_STAR: 5,
+        CROSS: 6,
+        XCROSS: 7,
+    }
+
+	// https://stackoverflow.com/a/48764436
+	// rounds half away from zero
+	function roundDec(val, dec = 0) {
+		if (Number.isInteger(val))
+			return val;
+	//	else if (dec == 0)
+	//		return round(val);
+
+		let p = 10 ** dec;
+		let n = (val * p) * (1 + Number.EPSILON);
+		return round(n) / p;
+	}
+
+    const moveToH = (p, x, y) => { p.moveTo(x, y); };
+    const moveToV = (p, y, x) => { p.moveTo(x, y); };
+    const lineToH = (p, x, y) => { p.lineTo(x, y); };
+    const lineToV = (p, y, x) => { p.lineTo(x, y); };
+    const rectH = rect(0);
+    const rectV = rect(1);
+    const arcH = (p, x, y, r, startAngle, endAngle) => { p.arc(x, y, r, startAngle, endAngle); };
+    const arcV = (p, y, x, r, startAngle, endAngle) => { p.arc(x, y, r, startAngle, endAngle); };
+
+    function rect(ori) {
+        let moveTo = ori == 0 ?
+            moveToH :
+            moveToV;
+
+        let arcTo = ori == 0 ?
+            (p, x1, y1, x2, y2, r) => { p.arcTo(x1, y1, x2, y2, r); } :
+            (p, y1, x1, y2, x2, r) => { p.arcTo(x1, y1, x2, y2, r); };
+
+        let rect = ori == 0 ?
+            (p, x, y, w, h) => { p.rect(x, y, w, h); } :
+            (p, y, x, h, w) => { p.rect(x, y, w, h); };
+
+        // TODO (pending better browser support): https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/roundRect
+        return (p, x, y, w, h, endRad = 0, baseRad = 0) => {
+            if (endRad == 0 && baseRad == 0)
+                rect(p, x, y, w, h);
+            else {
+                endRad  = min(endRad,  w / 2, h / 2);
+                baseRad = min(baseRad, w / 2, h / 2);
+
+                // adapted from https://stackoverflow.com/questions/1255512/how-to-draw-a-rounded-rectangle-using-html-canvas/7838871#7838871
+                moveTo(p, x + endRad, y);
+                arcTo(p, x + w, y, x + w, y + h, endRad);
+                arcTo(p, x + w, y + h, x, y + h, baseRad);
+                arcTo(p, x, y + h, x, y, baseRad);
+                arcTo(p, x, y, x + w, y, endRad);
+                p.closePath();
+            }
+        };
+    }
+    // https://stackoverflow.com/a/48764436
+    // rounds half away from zero
+    function roundDec(val, dec = 0) {
+        if (Number.isInteger(val))
+            return val;
+    //	else if (dec == 0)
+    //		return round(val);
+
+        let p = 10 ** dec;
+        let n = (val * p) * (1 + Number.EPSILON);
+        return Math.round(n) / p;
+    }
+    function _drawAcc(lineTo) {
+        return (stroke, accX, minY, maxY, inY, outY) => {
+            if (minY != maxY) {
+                if (inY != minY && outY != minY)
+                    lineTo(stroke, accX, minY);
+                if (inY != maxY && outY != maxY)
+                    lineTo(stroke, accX, maxY);
+
+                lineTo(stroke, accX, outY);
+            }
+        };
+    }
+
+    function pointsCustom(pointForm) {
+        return (u, seriesIdx, idx0, idx1, filtIdxs) => {
+            let { pxRatio } = u;
+
+            return uPlot.orient(u, seriesIdx, (series, dataX, dataY, scaleX, scaleY, valToPosX, valToPosY, xOff, yOff, xDim, yDim) => {
+                let { pxRound, points } = series;
+
+                const isH = scaleX.ori == 0;
+                const moveTo = isH ? moveToH : moveToV;
+                const arc = isH ? arcH : arcV;
+                const lineTo = isH ? lineToH : lineToV;
+
+                const width = roundDec(points.width * pxRatio, 3);
+
+                let demiSize = (points.size - points.width) / 2 * pxRatio;
+                let fullSize = roundDec(demiSize * 2, 3);
+
+                let fill = new Path2D();
+                let clip = new Path2D();
+
+                let { left: lft, top: top, width: wid, height: hgt } = u.bbox;
+
+                rectH(clip,
+                    lft - demiSize,
+                    top - demiSize,
+                    wid + fullSize,
+                    hgt + fullSize,
+                );
+
+                const lastDrawnSize = 100;
+                const lastDrawn = [Array(lastDrawnSize), Array(lastDrawnSize)];
+                let indexLastDrawn = -1;
+
+                for (var pi = idx0; pi <= idx1; pi++) {
+                    const yVal = dataY[pi];
+                    if (yVal == null) continue;
+
+                    const x = pxRound(valToPosX(dataX[pi], scaleX, xDim, xOff));
+                    const y = pxRound(valToPosY(yVal, scaleY, yDim, yOff));
+
+                    let shouldBeDrawn = true
+                    for (var di = indexLastDrawn ; di > 0 && di > indexLastDrawn - lastDrawnSize && shouldBeDrawn ; di--) {
+                        let lastDrawnPoint = lastDrawn[di%lastDrawnSize];
+                        if (x - lastDrawnPoint[0] > fullSize) break;
+                        shouldBeDrawn = Math.abs(lastDrawnPoint[1] - y) > fullSize;
+                    }
+                    if (!shouldBeDrawn) continue;
+                    lastDrawn[(++indexLastDrawn)%lastDrawnSize] = [x,y];
+                    pointForm.draw(fill, x, y, demiSize, moveTo, arc, lineTo);
+                }
+
+
+                // if (filtIdxs)
+                //     filtIdxs.forEach(drawPoint);
+                // else {
+                //     for (let pi = idx0; pi <= idx1; pi++) {
+                //         if (dataY[pi] != null) drawPoint(pi);
+                //     }
+                // }
+
+                return {
+                    stroke: width > 0 ? fill : null,
+                    fill,
+                    clip,
+                    flags: 0,
+                };
+            });
+        };
+    }
+
+	// TODO: drawWrap(seriesIdx, drawPoints) (save, restore, translate, clip)
+	function scatterNeighbours1(pointForm) {
+		return (u, serieIdx, idx0, idx1/*, filtIdxs*/) => {
+		//	log("drawPoints()", arguments);
+            console.log(u);
+			let { pxRatio } = u;
+
+			return uPlot.orient(u, serieIdx, (serie, dataX, dataY, scaleX, scaleY, valToPosX, valToPosY, xOff, yOff, xDim, yDim) => {
+                let { ctx } = u;
+                let { moveTo, arc } = ctx;
+				let { pxRound, points, scale, stroke } = serie;
+                console.log(serie);
+                ctx.fillStyle = stroke;
+
+				const width = roundDec(points.width * pxRatio, 3);
+
+				let rad = (points.size - points.width) / 2 * pxRatio;
+				let dia = roundDec(rad * 2, 3);
+
+				let fill = new Path2D();
+				let clip = new Path2D();
+
+				let { left: lft, top: top, width: wid, height: hgt } = u.bbox;
+
+				clip.rect(
+					lft - dia,
+					top - dia,
+					wid + dia * 2,
+					hgt + dia * 2,
+				);
+
+                const lastDrawnSize = 100;
+                const lastDrawn = [Array(lastDrawnSize), Array(lastDrawnSize)];
+                let indexLastDrawn = -1;
+                let x=-1;
+                let y=-1;
+
+                for (var pi = idx0; pi <= idx1; pi++) {
+                    if (dataY[pi] != null) {
+						let x = pxRound(valToPosX(dataX[pi], scaleX, xDim, xOff));
+						let y = pxRound(valToPosY(dataY[pi], scaleY, yDim, yOff));
+
+                        let shouldBeDrawn = true
+                        for (var di = indexLastDrawn ; di > 0 && di > indexLastDrawn - lastDrawnSize && shouldBeDrawn ; di--) {
+                            var diX = lastDrawn[di%lastDrawnSize][0];
+                            var diY = lastDrawn[di%lastDrawnSize][1];
+                            if (Math.abs(diX - x) > rad*2) break;
+                            shouldBeDrawn = Math.abs(diY - y) > rad*2;
+                        }
+                        if (!shouldBeDrawn) continue;
+                        lastDrawn[(++indexLastDrawn)%lastDrawnSize] = [x,y]
+                        drawStar(ctx, x, y);
+                        pointForm.draw(ctx, fill, x, y, moveTo, arc, rad);
+                    }
+                }
+
+				return {
+					stroke: width > 0 ? fill : null,
+					fill,
+					clip,
+					flags: 3,
+				};
+			});
+		};
+	}
+
+	function scatterNeighbours2(opts, pointForm) {
+		const alignGaps = ifNull(opts?.alignGaps, 0);
+
+		return (u, seriesIdx, idx0, idx1) => {
+			return uPlot.orient(u, seriesIdx, (series, dataX, dataY, scaleX, scaleY, valToPosX, valToPosY, xOff, yOff, xDim, yDim) => {
+				console.log("scatterNeighbours2: "+pointForm);
+				[idx0, idx1] = nonNullIdxs(dataY, idx0, idx1);
+
+				let pxRound = series.pxRound;
+
+				let pixelForX = val => pxRound(valToPosX(val, scaleX, xDim, xOff));
+				let pixelForY = val => pxRound(valToPosY(val, scaleY, yDim, yOff));
+
+				let lineTo, drawAcc;
+
+				if (scaleX.ori == 0) {
+					lineTo = lineToH;
+					drawAcc = drawAccH;
+				}
+				else {
+					lineTo = lineToV;
+					drawAcc = drawAccV;
+				}
+
+				const dir = scaleX.dir * (scaleX.ori == 0 ? 1 : -1);
+
+				const _paths = {stroke: new Path2D(), fill: null, clip: null, band: null, gaps: null, flags: BAND_CLIP_FILL};
+				const stroke = _paths.stroke;
+
+				let hasGap = false;
+
+				console.log("idx0="+idx0+", idx1="+idx1+", xDim="+xDim);
+				// decimate when number of points >= 4x available pixels
+				const decimate = idx1 - idx0 >= xDim * 4;
+
+				if (decimate) {
+					let xForPixel = pos => u.posToVal(pos, scaleX.key, true);
+
+					let minY = null,
+						maxY = null,
+						inY, outY, drawnAtX;
+
+					let accX = pixelForX(dataX[dir == 1 ? idx0 : idx1]);
+
+					let idx0px = pixelForX(dataX[idx0]);
+					let idx1px = pixelForX(dataX[idx1]);
+
+					// tracks limit of current x bucket to avoid having to get x pixel for every x value
+					let nextAccXVal = xForPixel(dir == 1 ? idx0px + 1 : idx1px - 1);
+
+					for (let i = dir == 1 ? idx0 : idx1; i >= idx0 && i <= idx1; i += dir) {
+						let xVal = dataX[i];
+						let reuseAccX = dir == 1 ? (xVal < nextAccXVal) : (xVal > nextAccXVal);
+						let x = reuseAccX ? accX :  pixelForX(xVal);
+
+						let yVal = dataY[i];
+
+						if (x == accX) {
+							if (yVal != null) {
+								outY = yVal;
+
+								if (minY == null) {
+									lineTo(stroke, x, pixelForY(outY));
+									inY = minY = maxY = outY;
+								} else {
+									if (outY < minY)
+										minY = outY;
+									else if (outY > maxY)
+										maxY = outY;
+								}
+							}
+							else {
+								if (yVal === null)
+									hasGap = true;
+							}
+						}
+						else {
+							if (minY != null)
+								drawAcc(stroke, accX, pixelForY(minY), pixelForY(maxY), pixelForY(inY), pixelForY(outY));
+
+							if (yVal != null) {
+								outY = yVal;
+								lineTo(stroke, x, pixelForY(outY));
+								minY = maxY = inY = outY;
+							}
+							else {
+								minY = maxY = null;
+
+								if (yVal === null)
+									hasGap = true;
+							}
+
+							accX = x;
+							nextAccXVal = xForPixel(accX + dir);
+						}
+					}
+
+					if (minY != null && minY != maxY && drawnAtX != accX)
+						drawAcc(stroke, accX, pixelForY(minY), pixelForY(maxY), pixelForY(inY), pixelForY(outY));
+				}
+				else {
+					for (let i = dir == 1 ? idx0 : idx1; i >= idx0 && i <= idx1; i += dir) {
+						let yVal = dataY[i];
+
+						if (yVal === null)
+							hasGap = true;
+						else if (yVal != null)
+							lineTo(stroke, pixelForX(dataX[i]), pixelForY(yVal));
+					}
+				}
+
+				let [ bandFillDir, bandClipDir ] = bandFillClipDirs(u, seriesIdx);
+
+				if (series.fill != null || bandFillDir != 0) {
+					let fill = _paths.fill = new Path2D(stroke);
+
+					let fillToVal = series.fillTo(u, seriesIdx, series.min, series.max, bandFillDir);
+					let fillToY = pixelForY(fillToVal);
+
+					let frX = pixelForX(dataX[idx0]);
+					let toX = pixelForX(dataX[idx1]);
+
+					if (dir == -1)
+						[toX, frX] = [frX, toX];
+
+					lineTo(fill, toX, fillToY);
+					lineTo(fill, frX, fillToY);
+				}
+
+				if (!series.spanGaps) { // skip in mode: 2?
+				//	console.time('gaps');
+					let gaps = [];
+
+					hasGap && gaps.push(...findGaps(dataX, dataY, idx0, idx1, dir, pixelForX, alignGaps));
+
+				//	console.timeEnd('gaps');
+
+				//	console.log('gaps', JSON.stringify(gaps));
+
+					_paths.gaps = gaps = series.gaps(u, seriesIdx, idx0, idx1, gaps);
+
+					_paths.clip = clipGaps(gaps, scaleX.ori, xOff, yOff, xDim, yDim);
+				}
+
+				if (bandClipDir != 0) {
+					_paths.band = bandClipDir == 2 ? [
+						clipBandLine(u, seriesIdx, idx0, idx1, stroke, -1),
+						clipBandLine(u, seriesIdx, idx0, idx1, stroke,  1),
+					] : clipBandLine(u, seriesIdx, idx0, idx1, stroke, bandClipDir);
+				}
+
+				return _paths;
+			});
+		};
+	}
+
+    function valuePrettyPrinter(
+        value,
+        unit = '',
+        significantDigits = 3,
+        powerOfTen = true,
+        spaceBeforeUnit = false
+    ) {
+        if (value == null || isNaN(value)) return '-';
+
+        significantDigits = Math.max(significantDigits, 3);
+
+        const suffixes = powerOfTen ? SUFFIXES_10 : SUFFIXES_02;
+        const base = powerOfTen ? 1000 : 1024;
+
+        const absValue = Math.abs(value);
+        let suffixIndex = 0;
+
+        if (absValue >= 1) {
+            suffixIndex = Math.floor(Math.log(absValue) / Math.log(base));
+            suffixIndex = Math.min(suffixIndex, suffixes.length - 1);
+        }
+
+        const scaledValue = value / Math.pow(base, suffixIndex);
+
+        // Determine decimal places based on value magnitude
+        let decimals = 0;
+        if (scaledValue < 10) {
+            decimals = significantDigits - 1;
+        } else if (scaledValue < 100) {
+            decimals = significantDigits - 2;
+        } else {
+            decimals = significantDigits - 3;
+        }
+
+        const space = spaceBeforeUnit ? ' ' : '';
+        const suffix = suffixes[suffixIndex] + unit;
+
+        return scaledValue.toFixed(decimals) + space + suffix;
+    }
+
+    function ppAdimensional(value, significative_number) {
+        return valuePrettyPrinter(value, unit = '', significative_number = significative_number, powerOfTen = true, spacebeforeunit = true)
+    }
+
+    function ppByte(value, significative_number) {
+        return valuePrettyPrinter(value, unit = 'B', significative_number = significative_number, powerOfTen = false, spacebeforeunit = true)
+    }
+
+    function ppBytePerSecond(value, significative_number) {
+        return valuePrettyPrinter(value, unit = 'B/s', significative_number = significative_number, powerOfTen = false, spacebeforeunit = true)
+    }
+
+    const NS_IN_US = 1e3;
+    const NS_IN_MS = 1e6;
+    const NS_IN_S  = 1e9;
+    const NS_IN_M  = NS_IN_S * 60;
+    const NS_IN_H  = NS_IN_M * 60;
+    const NS_IN_D  = NS_IN_H * 24;
+
+    function pad(value, length = 2) {
+        return value.toString().padStart(length, '0')
+    }
+
+    function durationPrettyPrinter(
+        value,
+        significantDigits = 2,
+        spaceBeforeUnit = false,
+        options = { colonFormat: false, includeMillis: false }
+    ) {
+        if (value == null) return '-';
+        significantDigits = Math.max(significantDigits, 2);
+        const space = spaceBeforeUnit ? ' ' : '';
+        const { colonFormat = false, includeMillis = false } = options;
+
+
+        if (value < NS_IN_US) {
+            return value + space + 'ns';
+        } else if (value < NS_IN_MS) {
+            const dec = value < NS_IN_US * 10 ? significantDigits :
+                        value < NS_IN_US * 100 ? significantDigits - 1 : significantDigits - 2;
+            return (value / NS_IN_US).toFixed(dec) + space + 'us';
+        } else if (value < NS_IN_S) {
+            const dec = value < NS_IN_MS * 10 ? significantDigits :
+                        value < NS_IN_MS * 100 ? significantDigits - 1 : significantDigits - 2;
+            return (value / NS_IN_MS).toFixed(dec) + space + 'ms';
+        }
+
+        // Above 1 second
+        const totalSeconds = value / NS_IN_S;
+        const days = Math.floor(totalSeconds / 86400);
+        const hours = Math.floor(totalSeconds / 3600) % 24;
+        const minutes = Math.floor(totalSeconds / 60) % 60;
+        const seconds = Math.floor(totalSeconds) % 60;
+        const milliseconds = Math.floor((value % NS_IN_S) / 1e6);
+
+        const msSuffix = includeMillis ? `.${pad(milliseconds, 3)}` : '';
+
+        if (colonFormat) {
+            const hh = pad(days * 24 + hours);
+            const mm = pad(minutes);
+            const ss = pad(seconds);
+            return `${hh}:${mm}:${ss}${includeMillis ? '.' + pad(milliseconds, 3) : ''}`;
+        }
+
+        if (value < NS_IN_M) {
+            return `${pad(minutes)}m ${pad(seconds)}s${msSuffix}`;
+        } else if (value < NS_IN_H) {
+            return `${pad(minutes)}m ${pad(seconds)}s${msSuffix}`;
+        } else if (value < NS_IN_D) {
+            return `${pad(hours)}h ${pad(minutes)}m ${pad(seconds)}s${msSuffix}`;
+        } else {
+            return `${days}d ${pad(hours)}h ${pad(minutes)}m ${pad(seconds)}s${msSuffix}`;
+        }
+    }
+
+    let syncKey = 0;
+    var loop = 1e6;
+    let data = [
+        Array(loop),
+        Array(loop),
+        Array(loop),
+    ]
+    data[0][0] = 1553990400;
+    data[1][0] = 1024*1024*1024;
+    data[2][0] = data[1][0];
+
+    function getRandomArbitrary(min, max) {
+        return Math.random() * (max - min) + min;
+    }
+    for (var i = 1; i < loop; i++) {
+        let t = getRandomArbitrary(0.750, 1.250);
+        let a = getRandomArbitrary(750*1024*1024, 3.5*1024*1024*1024)
+        data[0][i] = data[0][i-1] + t;
+        data[1][i] = a;
+        data[2][i] = data[2][i-1] + t*a;
+    }
+
+    function getSize(id) {
+        var e = document.getElementById(id+"-chart")
+        if (e == null) {
+            w = window.innerWidth
+            h = window.innerHeight
+        } else {
+            w = e.offsetWidth
+            h = e.offsetHeight
+        }
+        return {
+            width: w,
+            height: h,
+        }
+    }
+
+    const fmtDate = uPlot.fmtDate('{YYYY}-{MM}-{DD} {HH}:{mm}:{ss}.{fff}');
+    const opts = (t, id, p1, p2) => {
+        return {
+            title: t,
+            ...getSize(id),
+            cursor: {
+                points: {
+                    fill: (self, si) => self.series[si]._stroke,
+                }
+            },
+            // tzDate: ts => uPlot.tzDate(new Date(ts * 1e3), 'UTC'), // Not working, see https://github.com/leeoniya/uPlot/issues/1068
+            series: [
+                {
+                    label: "x",
+                    value: (u, ts) => ts==null? "-" : fmtDate(uPlot.tzDate(new Date(ts * 1e3), 'UTC')),
+                },
+                {
+                    label: "Allocation Rate Yes m'lady",
+                    stroke: 'blue',
+                    scale: 'LEFT',
+                    value: (u, rawValue) => ppBytePerSecond(rawValue, 3),
+                    paths: () => null,
+                    points: {
+                        size: 8,
+                        width: 1,
+                        paths: pointsCustom(p1),
+                        show: () => true,
+                        fill: '#0000',
+                    },
+                },
+                {
+                    label: "Total",
+                    stroke: 'red',
+                    scale: 'RIGHT',
+                    value: (u, rawValue) => ppByte(rawValue, 3),
+                    paths: () => null,
+                    points: {
+                        size: 8,
+                        width: 1,
+                        paths: pointsCustom(p2),
+                        show: () => true,
+                        fill: '#0000',
+                    },
+                }
+            ],
+            axes: [
+                {
+                    values: [
+                        //tick incr         default           year                              month    day                       hour     min             sec       mode
+                        [3600 * 24 * 365,   "{YYYY}",         null,                             null,    null,                     null,    null,           null,        1],
+                        [3600 * 24 * 28,    "{MM}",           "\n{YYYY}",                       null,    null,                     null,    null,           null,        1],
+                        [3600 * 24,         "{MM}/{DD}",      "\n{YYYY}",                       null,    null,                     null,    null,           null,        1],
+                        [3600,              "{HH}"   ,        "\n{YYYY}/{MM}/{DD}",             null,    "\n{MM}/{DD}",            null,    null,           null,        1],
+                        [60,                "{HH}:{mm}",      "\n{YYYY}/{MM}/{DD}",             null,    "\n{MM}/{DD}",            null,    null,           null,        1],
+                        [1,                 ":{ss}",          "\n{YYYY}/{MM}/{DD} {HH}:{mm}",   null,    "\n{MM}/{DD} {HH}:{mm}",  null,    "\n{HH}:{mm}",  null,        1],
+                        [0.001,             ":{ss}.{fff}",    "\n{YYYY}/{MM}/{DD} {HH}:{mm}",   null,    "\n{MM}/{DD} {HH}:{mm}",  null,    "\n{HH}:{mm}",  null,        1],
+                    ],
+                },
+                {
+                    type: 'y',
+                    show: true,
+                    scale: 'LEFT',
+                    values: (self,  vals, space) => vals.map(rawValue => ppBytePerSecond(rawValue, 3)),
+                    space: 40,
+                    gap: 5,
+                    size: 90,
+                    labelSize: 30,
+                    side: 3,
+                    rotate: 0,
+                    grid: {show: true},
+                },
+                {
+                    type: 'y',
+                    show: true,
+                    scale: 'RIGHT',
+                    values: (self,  vals, space) => vals.map(rawValue => ppByte(rawValue, 3)),
+                    space: 40,
+                    gap: 5,
+                    size: 90,
+                    labelSize: 30,
+                    side: 1,
+                    rotate: 0,
+                    grid: {show: true},
+                },
+            ],
+            legend: {
+                mount: (u, el) => {
+                    document.getElementById(id+"-legend").appendChild(el);
+                },
+            },
+        };
+    }
+    const opts1 = opts("Resize 1", "u1", PointForm.CIRCLE, PointForm.SQUARE);
+    const opts2 = opts(null      , "u2", PointForm.CIRCLE, PointForm.DIAMOND);
+    const opts3 = opts("Resize 3", "u3", PointForm.CIRCLE, PointForm.U_TRIANGLE);
+    const opts4 = opts("Resize 4", "u4", PointForm.CIRCLE, PointForm.D_TRIANGLE);
+    const opts5 = opts(null      , "u5", PointForm.D_TRIANGLE, PointForm.U_TRIANGLE);
+    const opts6 = opts(null      , "u6", PointForm.CIRCLE, PointForm.SQUARE);
+    const opts7 = opts(null      , "u7", PointForm.CIRCLE, PointForm.SQUARE);
+    const opts8 = opts(null      , "u8", PointForm.CIRCLE, PointForm.SQUARE);
+
+    let u1 = new uPlot(opts1, data, document.getElementById("u1-chart"));
+    let u2 = new uPlot(opts2, data, document.getElementById("u2-chart"));
+    let u3 = new uPlot(opts3, data, document.getElementById("u3-chart"));
+    let u4 = new uPlot(opts4, data, document.getElementById("u4-chart"));
+    let u5 = new uPlot(opts5, data, document.getElementById("u5-chart"));
+    let u6 = new uPlot(opts6, data, document.getElementById("u6-chart"));
+    let u7 = new uPlot(opts7, data, document.getElementById("u7-chart"));
+    let u8 = new uPlot(opts8, data, document.getElementById("u8-chart"));
+
+    function throttle(cb, limit) {
+        var wait = false;
+
+        return () => {
+            if (!wait) {
+                requestAnimationFrame(cb);
+                wait = true;
+                setTimeout(() => {
+                    wait = false;
+                }, limit);
+            }
+        }
+    }
+
+    //	window.addEventListener("resize", throttle(() => u.setSize(getSize()), 100));
+    window.addEventListener("resize", e => {
+        u1.setSize(getSize("u1"));
+        u2.setSize(getSize("u2"));
+        u3.setSize(getSize("u3"));
+        u4.setSize(getSize("u4"));
+        u5.setSize(getSize("u5"));
+        u6.setSize(getSize("u6"));
+        u7.setSize(getSize("u7"));
+        u8.setSize(getSize("u8"));
+    });
+    uPlot.fmtDate('{YYYY}-{MM}-{DD} {HH}:{mm}:{ss}')
+</script>
+</body>
+</html>

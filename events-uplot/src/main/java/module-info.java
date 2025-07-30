@@ -14,12 +14,8 @@
  * limitations under the License.
  */
 
-plugins {
-    // Apply the foojay-resolver plugin to allow automatic download of JDKs
-    id("org.gradle.toolchains.foojay-resolver-convention") version "0.8.0"
+/**
+ * @since XXX
+ */
+module fr.byowares.tech.events {
 }
-
-rootProject.name = "tech"
-include("events")
-include("events-uplot")
-include("sandboxes:tests-ui-libs")

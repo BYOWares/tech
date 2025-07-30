@@ -21,6 +21,9 @@
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/buildSrc" />
             <option value="$PROJECT_DIR$/events" />
+            <option value="$PROJECT_DIR$/events-uplot" />
+            <option value="$PROJECT_DIR$/sandboxes" />
+            <option value="$PROJECT_DIR$/sandboxes/tests-ui-libs" />
           </set>
         </option>
       </GradleProjectSettings>

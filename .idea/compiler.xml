@@ -5,7 +5,9 @@
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="tech.events-uplot.main" options="-Xlint:unchecked" />
       <module name="tech.events.main" options="-Xlint:unchecked" />
+      <module name="tech.sandboxes.tests-ui-libs.main" options="-Xlint:unchecked" />
     </option>
   </component>
 </project>
