@@ -1,0 +1,237 @@
+<!--
+  ~ Copyright BYOWares
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~     http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>MinimalBitSet tests</title>
+    <style>
+        table {
+            font-family: monospace, sans-serif;
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        table td, table th {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+
+        .ko {
+            background-color: rgb(250, 220, 220);
+        }
+        .ok {
+            background-color: rgb(220, 250, 220);
+        }
+
+        table th {
+            padding-top: 12px;
+            padding-bottom: 12px;
+            background-color: darkslategrey;
+            color: white;
+        }
+
+        table tr .left {
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+<h1>Summary</h1>
+<table id="summary">
+  <tr>
+    <th>Tests name</th>
+    <th>Failures</th>
+    <th>Success</th>
+    <th>Total</th>
+  </tr>
+</table>
+<h1>MinimalBitSet.set tests</h1>
+<table id="set">
+  <tr>
+    <th>Id</th>
+    <th>Operation</th>
+    <th>Expected</th>
+    <th>Actual</th>
+    <th>Status</th>
+    <th>DEBUG</th>
+  </tr>
+</table>
+<h1>MinimalBitSet.setRange tests</h1>
+<table id="setRange">
+  <tr>
+    <th>Id</th>
+    <th>Operation</th>
+    <th>Expected</th>
+    <th>Actual</th>
+    <th>Status</th>
+    <th>DEBUG</th>
+  </tr>
+</table>
+<script src="../../../main/resources/uplot/ovr/MinimalBitSet.js"></script>
+<script>
+    function reverseString(str) {
+        let ans = '';
+        for (let i = str.length - 1; i >= 0; i--) {
+            ans += str[i];
+        }
+        return ans;
+    }
+    const BITS2STR = ['0000', '0001', '0010', '0011',
+                      '0100', '0101', '0110', '0111',
+                      '1000', '1001', '1010', '1011',
+                      '1100', '1101', '1110', '1111'];
+    const BITS2STR_LSB_FIRST = BITS2STR.map(reverseString)
+    const MASK = 0xF;
+    const STATISTICS = [];
+    let statIndex = 0;
+
+    function int2str_LeastSignificantBitFirst(v) {
+        return BITS2STR_LSB_FIRST[v>>>0  & MASK] + BITS2STR_LSB_FIRST[v>>>4  & MASK] + BITS2STR_LSB_FIRST[v>>>8  & MASK] + BITS2STR_LSB_FIRST[v>>>12 & MASK] +
+               BITS2STR_LSB_FIRST[v>>>16 & MASK] + BITS2STR_LSB_FIRST[v>>>20 & MASK] + BITS2STR_LSB_FIRST[v>>>24 & MASK] + BITS2STR_LSB_FIRST[v>>>28 & MASK];
+    }
+    function int2str_MostSignificantBitFirst(v) {
+        return BITS2STR[v>>>28 & MASK] + BITS2STR[v>>>24 & MASK] + BITS2STR[v>>>20 & MASK] + BITS2STR[v>>>16 & MASK] +
+               BITS2STR[v>>>12 & MASK] + BITS2STR[v>>>8  & MASK] + BITS2STR[v>>>4  & MASK] + BITS2STR[v>>>0  & MASK];
+    }
+    function bitSetAsString(bitSet) {
+        const ans = Array(bitSet.wordsInUse);
+        for (let i=0 ; i<ans.length ; i++)
+            ans[i] = int2str_LeastSignificantBitFirst(bitSet.words[i]);
+        return JSON.stringify(ans);
+    }
+
+    function addTestArray(tableId, operation, excepted, bitSet) {
+        excepted = JSON.stringify(excepted).replaceAll(',', ', ').replaceAll('[', '').replaceAll(']', '');
+        const actual = bitSetAsString(bitSet).replaceAll(',', ', ').replaceAll('[', '').replaceAll(']', '');
+        addTest(tableId, operation, excepted, actual, bitSet);
+    }
+
+    function addTest(tableId, operation, excepted, actual, bitSet) {
+        const success = excepted == actual;
+        const stats = STATISTICS[statIndex];
+        stats[success? 1 : 0]++;
+        const testId = stats[0] + stats[1];
+
+        let table = document.getElementById(tableId);
+        let row = table.insertRow(testId);
+        row.classList.add(success ? 'ok' : 'ko');
+        Array(6).keys().forEach(element => { row.insertCell() });
+
+        row.cells[0].innerHTML = testId;
+        row.cells[1].innerHTML = operation;
+        row.cells[1].classList.add('left');
+        row.cells[2].innerHTML = excepted;
+        row.cells[3].innerHTML = actual;
+        row.cells[4].innerHTML = success ? 'Success' : 'Failure';
+        row.cells[5].innerHTML = bitSet.wordsInUse+": "+bitSet.words.toString();
+    }
+
+    function addSummary(testsName) {
+        let table = document.getElementById('summary');
+        let row = table.insertRow(statIndex+1);
+        const stats = STATISTICS[statIndex];
+
+        row.classList.add(stats[0]==0 ? 'ok' : 'ko');
+        Array(4).keys().forEach(element => { row.insertCell() });
+        row.cells[0].innerHTML = testsName;
+        row.cells[1].innerHTML = stats[0];
+        row.cells[2].innerHTML = stats[1];
+        row.cells[3].innerHTML = stats[0]+stats[1];
+    }
+    /*****************************************************
+     * TESTING SET METHOD
+     * **************************************************/
+    statIndex = 0;
+    STATISTICS[statIndex] = [0, 0];
+    let tableId = 'set'
+
+    let bitSet = new MinimalBitSet();
+    addTestArray(tableId, 'bitSet = new MinimalBitSet()', [], bitSet);
+    let bitIndex = 0;
+    for ( ; bitIndex<32 ; bitIndex++) {
+        addTest(tableId, 'bitSet.get('+bitIndex+')', false, bitSet.get(bitIndex), bitSet);
+        bitSet.set(bitIndex);
+        addTestArray(tableId, 'bitSet.set('+bitIndex+')', [int2str_LeastSignificantBitFirst(WORD_MASK>>>-(bitIndex+1))], bitSet);
+        bitSet.set(bitIndex);
+        addTestArray(tableId, 'bitSet.set('+bitIndex+')', [int2str_LeastSignificantBitFirst(WORD_MASK>>>-(bitIndex+1))], bitSet);
+        addTest(tableId, 'bitSet.get('+bitIndex+')', true, bitSet.get(bitIndex), bitSet);
+    }
+    for ( ; bitIndex<37 ; bitIndex++) {
+        addTest(tableId, 'bitSet.get('+bitIndex+')', false, bitSet.get(bitIndex), bitSet);
+        bitSet.set(bitIndex);
+        addTestArray(tableId, 'bitSet.set('+bitIndex+')', [int2str_LeastSignificantBitFirst(WORD_MASK), int2str_LeastSignificantBitFirst(WORD_MASK>>>-(bitIndex+1))], bitSet);
+        bitSet.set(bitIndex);
+        addTestArray(tableId, 'bitSet.set('+bitIndex+')', [int2str_LeastSignificantBitFirst(WORD_MASK), int2str_LeastSignificantBitFirst(WORD_MASK>>>-(bitIndex+1))], bitSet);
+        addTest(tableId, 'bitSet.get('+bitIndex+')', true, bitSet.get(bitIndex), bitSet);
+    }
+    bitSet.clearAll();
+    addTestArray(tableId, 'bitSet.clearAll()', [], bitSet);
+    bitSet.set(65);
+    addTestArray(tableId, 'bitSet.set(65)', [int2str_LeastSignificantBitFirst(0), int2str_LeastSignificantBitFirst(0), int2str_LeastSignificantBitFirst(2)], bitSet);
+
+    addSummary('MinimalBitSet.set tests');
+
+    /*****************************************************
+     * TESTING SETRANGE METHOD
+     * **************************************************/
+    STATISTICS[++statIndex] = [0, 0];
+    tableId = 'setRange'
+
+    bitSet = new MinimalBitSet();
+    addTestArray(tableId, 'bitSet = new MinimalBitSet()', [], bitSet);
+    bitSet.setRange(5, 12);
+    addTestArray(tableId, 'bitSet.setRange(5, 12) // Same word', [int2str_LeastSignificantBitFirst((WORD_MASK>>>-7)<<5)], bitSet);
+    for (let i=4 ; i<13 ; i++) {
+        addTest(tableId, 'bitSet.get('+i+')', i>4 && i<12, bitSet.get(i), bitSet);
+    }
+    bitSet.setRange(5, 37);
+    addTestArray(tableId, 'bitSet.setRange(5, 37) // Two words', [int2str_LeastSignificantBitFirst(WORD_MASK<<5), int2str_LeastSignificantBitFirst(WORD_MASK>>>-5)], bitSet);
+    bitSet = new MinimalBitSet()
+    addTestArray(tableId, 'bitSet = new MinimalBitSet()', [], bitSet);
+    bitSet.setRange(5, 69);
+    addTestArray(tableId, 'bitSet.setRange(5, 69) // Three words', [int2str_LeastSignificantBitFirst(WORD_MASK<<5), int2str_LeastSignificantBitFirst(WORD_MASK), int2str_LeastSignificantBitFirst(WORD_MASK>>>-5)], bitSet);
+    for (const i of [4, 5, 31, 32, 63, 64, 68, 69]) {
+        addTest(tableId, 'bitSet.get('+i+')', i>4 && i<69, bitSet.get(i), bitSet);
+    }
+    bitSet.clearAll();
+    addTestArray(tableId, 'bitSet.clearAll()', [], bitSet);
+    for (const i of [4, 5, 31, 32, 63, 64, 68, 69]) {
+        addTest(tableId, 'bitSet.get('+i+')', false, bitSet.get(i), bitSet);
+    }
+    bitSet = new MinimalBitSet();
+    addTestArray(tableId, 'bitSet = new MinimalBitSet()', [], bitSet);
+    for (const i of [4, 5, 31, 32, 63, 64, 68, 69]) {
+        addTest(tableId, 'bitSet.get('+i+')', false, bitSet.get(i), bitSet);
+    }
+
+    addSummary('MinimalBitSet.setRange tests');
+
+    /*****************************************************
+     * SUMMING STATISTICS
+     * **************************************************/
+    const totalStat = [0, 0];
+    STATISTICS[++statIndex] = totalStat;
+    for (let j=0 ; j<statIndex ; j++) {
+        totalStat[0] += STATISTICS[j][0];
+        totalStat[1] += STATISTICS[j][1];
+    }
+    addSummary('TOTAL');
+</script>
+</body>
+</html>
