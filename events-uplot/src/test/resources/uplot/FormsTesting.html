@@ -1,0 +1,403 @@
+<!--
+  ~ Copyright BYOWares
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~     http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Forms testing</title>
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <style>
+        body {
+            background-color: black;
+        }
+        canvas {
+            background-color: white;
+        }
+    </style>
+</head>
+<body>
+    <canvas id='canvas' width='1800' height='900'></canvas>
+<script>
+    const PALETTE_LIGHT = ['#005A8D', '#B71C1C', '#2E7D32', '#6A1B9A', '#EF6C00', '#00838F'];
+    const PALETTE_DARK  = ['#FFFF00', '#00BFFF', '#7FFF00', '#FF00FF', '#FFA500', '#00FFFF'];
+
+    const SIZES = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+    const MIN_SIZE = SIZES[0];
+    const MAX_SIZE = SIZES[SIZES.length-1];
+    const WIDTHS = [1, 2];
+
+    const pathCenter = new Path2D();
+    const width2Path = new Map();
+
+    function getPathForWidth(width) {
+        if (width2Path.has(width)) return width2Path.get(width);
+        const p = new Path2D();
+        width2Path.set(width, p);
+        return p;
+    }
+
+    function initDrawForm(x, y, size, width) {
+        // Drawing center and adjusting the center of the form
+        if (size % 2 == 0) pathCenter.rect(x-1, y-1, 2, 2);
+        else {
+            pathCenter.rect(x, y, 1, 1);
+            x += 0.5;
+            y += 0.5;
+        }
+        return {
+            p: getPathForWidth(width), // path
+            h: (size-width)/2, // half width (from the center to the midle of the stroke)
+            cx: x, // Center's abscissa
+            cy: y, // Center's ordinate
+        };
+    }
+
+    const SQRT_THREE = Math.sqrt(3);
+    const SQRT_SQRT_THREE = Math.sqrt(SQRT_THREE);
+    const SQRT_TWO = Math.sqrt(2);
+    const EIGHTY_PERCENT = 0.8;
+
+    // Forms ending with AA means Adjusted Area. The area is supposed to match the SQUARE one for the same size.
+    const PointForm = {
+        CIRCLE: {
+            draw: (x, y, s, w) => {
+                const { p, h, cx, cy } = initDrawForm(x, y, s, w);
+                p.moveTo(cx+h, cy);
+                p.arc(cx, cy, h, 0, 2 * Math.PI);
+            }
+        },
+        CIRCLE_AA: {
+            draw: (x, y, s, w) => {
+                const { p, h, cx, cy } = initDrawForm(x, y, s, w);
+                const a = h * Math.sqrt(4 / Math.PI);
+                p.moveTo(cx+a, cy);
+                p.arc(cx, cy, a, 0, 2 * Math.PI);
+            }
+        },
+        SQUARE: {
+            draw: (x, y, s, w) => {
+                const { p, h, cx, cy } = initDrawForm(x, y, s, w);
+                p.moveTo(cx-h, cy-h);
+                p.lineTo(cx+h, cy-h);
+                p.lineTo(cx+h, cy+h);
+                p.lineTo(cx-h, cy+h);
+                p.closePath();
+            }
+        },
+        DIAMOND_AA: {
+            draw: (x, y, s, w) => {
+                s = s*Math.sqrt(2);
+                const { p, h, cx, cy } = initDrawForm(x, y, s, w);
+                p.moveTo(cx+h, cy  );
+                p.lineTo(cx  , cy+h);
+                p.lineTo(cx-h, cy  );
+                p.lineTo(cx  , cy-h);
+                p.closePath();
+            }
+        },
+        DIAMOND: {
+            draw: (x, y, s, w) => {
+                const { p, h, cx, cy } = initDrawForm(x, y, s, w);
+                p.moveTo(cx+h, cy  );
+                p.lineTo(cx  , cy+h);
+                p.lineTo(cx-h, cy  );
+                p.lineTo(cx  , cy-h);
+                p.closePath();
+            }
+        },
+        U_TRIANGLE_AA_80PERCENT: {
+            draw: (x, y, s, w) => {
+                const { p, h, cx, cy } = initDrawForm(x, y, s, w);
+                const H = ((SQRT_SQRT_THREE * s) / 3) * EIGHTY_PERCENT;
+                const B = (s / SQRT_SQRT_THREE) * EIGHTY_PERCENT;
+                p.moveTo(cx+B, cy+H);
+                p.lineTo(cx-B, cy+H);
+                p.lineTo(cx  , cy-2*H);
+                p.closePath();
+            }
+        },
+        U_TRIANGLE: {
+            draw: (x, y, s, w) => {
+                const { p, h, cx, cy } = initDrawForm(x, y, s, w);
+                const H = h/2;
+                const B = SQRT_THREE * h / 2;
+                p.moveTo(cx+B, cy+H);
+                p.lineTo(cx-B, cy+H);
+                p.lineTo(cx  , cy-2*H);
+                p.closePath();
+            }
+        },
+        D_TRIANGLE_AA_80PERCENT: {
+            draw: (x, y, s, w) => {
+                const { p, h, cx, cy } = initDrawForm(x, y, s, w);
+                const H = ((SQRT_SQRT_THREE * s) / 3) * EIGHTY_PERCENT;
+                const B = (s / SQRT_SQRT_THREE) * EIGHTY_PERCENT;
+                p.moveTo(cx+B, cy-H);
+                p.lineTo(cx-B, cy-H);
+                p.lineTo(cx  , cy+2*H);
+                p.closePath();
+            }
+        },
+        D_TRIANGLE: {
+            draw: (x, y, s, w) => {
+                const { p, h, cx, cy } = initDrawForm(x, y, s, w);
+                const H = h/2;
+                const B = SQRT_THREE * h / 2;
+                p.moveTo(cx+B, cy-H);
+                p.lineTo(cx-B, cy-H);
+                p.lineTo(cx  , cy+2*H);
+                p.closePath();
+            }
+        },
+        PLUS_AA: {
+            draw: (x, y, s, w) => {
+                const { p, h, cx, cy } = initDrawForm(x, y, s, w);
+                const half_w = h*Math.sqrt(4 / 5) / 3;
+                const half_l = h*Math.sqrt(4 / 5);
+
+                p.moveTo(cx - half_w, cy - half_l);
+                p.lineTo(cx + half_w, cy - half_l);
+                p.lineTo(cx + half_w, cy - half_w);
+                p.lineTo(cx + half_l, cy - half_w);
+                p.lineTo(cx + half_l, cy + half_w);
+                p.lineTo(cx + half_w, cy + half_w);
+                p.lineTo(cx + half_w, cy + half_l);
+                p.lineTo(cx - half_w, cy + half_l);
+                p.lineTo(cx - half_w, cy + half_w);
+                p.lineTo(cx - half_l, cy + half_w);
+                p.lineTo(cx - half_l, cy - half_w);
+                p.lineTo(cx - half_w, cy - half_w);
+                p.closePath();
+            }
+        },
+        PLUS_2: {
+            draw: (x, y, s, w) => {
+                const { p, h, cx, cy } = initDrawForm(x, y, s, w);
+                const l = (s - 2*Math.floor(s/3) - w) / 2;
+
+                p.moveTo(cx - l, cy - h);
+                p.lineTo(cx + l, cy - h);
+                p.lineTo(cx + l, cy - l);
+                p.lineTo(cx + h, cy - l);
+                p.lineTo(cx + h, cy + l);
+                p.lineTo(cx + l, cy + l);
+                p.lineTo(cx + l, cy + h);
+                p.lineTo(cx - l, cy + h);
+                p.lineTo(cx - l, cy + l);
+                p.lineTo(cx - h, cy + l);
+                p.lineTo(cx - h, cy - l);
+                p.lineTo(cx - l, cy - l);
+                p.closePath();
+            }
+        },
+        PLUS_3: {
+            draw: (x, y, s, w) => {
+                const { p, h, cx, cy } = initDrawForm(x, y, s, w);
+                const l = (s - 2*w) / 4;
+
+                p.moveTo(cx - l, cy - h);
+                p.lineTo(cx + l, cy - h);
+                p.lineTo(cx + l, cy - l);
+                p.lineTo(cx + h, cy - l);
+                p.lineTo(cx + h, cy + l);
+                p.lineTo(cx + l, cy + l);
+                p.lineTo(cx + l, cy + h);
+                p.lineTo(cx - l, cy + h);
+                p.lineTo(cx - l, cy + l);
+                p.lineTo(cx - h, cy + l);
+                p.lineTo(cx - h, cy - l);
+                p.lineTo(cx - l, cy - l);
+                p.closePath();
+            }
+        },
+        CROSS_AA_1: {
+            draw: (x, y, s, w) => {
+                // Adjusted
+                const s_adjusted = s * Math.sqrt(4 / 5);
+                const { p, h, cx, cy } = initDrawForm(x, y, s_adjusted, w);
+                const half_w = h / 3;
+                const half_l = h;
+
+                const points = [
+                    { x: cx - half_w, y: cy - half_l },
+                    { x: cx + half_w, y: cy - half_l },
+                    { x: cx + half_w, y: cy - half_w },
+                    { x: cx + half_l, y: cy - half_w },
+                    { x: cx + half_l, y: cy + half_w },
+                    { x: cx + half_w, y: cy + half_w },
+                    { x: cx + half_w, y: cy + half_l },
+                    { x: cx - half_w, y: cy + half_l },
+                    { x: cx - half_w, y: cy + half_w },
+                    { x: cx - half_l, y: cy + half_w },
+                    { x: cx - half_l, y: cy - half_w },
+                    { x: cx - half_w, y: cy - half_w }
+                ];
+
+                p.moveTo(cx + (points[0].x - cx) * 1/SQRT_TWO - (points[0].y - cy) * 1/SQRT_TWO,
+                        cy + (points[0].x - cx) * 1/SQRT_TWO + (points[0].y - cy) * 1/SQRT_TWO);
+
+                for (let i = 1; i < points.length; i++) {
+                    const rotatedX = cx + (points[i].x - cx) * 1/SQRT_TWO - (points[i].y - cy) * 1/SQRT_TWO;
+                    const rotatedY = cy + (points[i].x - cx) * 1/SQRT_TWO + (points[i].y - cy) * 1/SQRT_TWO;
+                    p.lineTo(rotatedX, rotatedY);
+                }
+
+                p.closePath();
+            }
+        },
+        CROSS_AA_2: {
+            draw: (x, y, s, w) => {
+                // Adjusted A
+                const { p, h, cx, cy } = initDrawForm(x, y, s, w);
+                const half_w = h*Math.sqrt(4 / 5) / 3;
+                const half_l = h*Math.sqrt(4 / 5);
+
+                const points = [
+                    { x: cx - half_w, y: cy - half_l },
+                    { x: cx + half_w, y: cy - half_l },
+                    { x: cx + half_w, y: cy - half_w },
+                    { x: cx + half_l, y: cy - half_w },
+                    { x: cx + half_l, y: cy + half_w },
+                    { x: cx + half_w, y: cy + half_w },
+                    { x: cx + half_w, y: cy + half_l },
+                    { x: cx - half_w, y: cy + half_l },
+                    { x: cx - half_w, y: cy + half_w },
+                    { x: cx - half_l, y: cy + half_w },
+                    { x: cx - half_l, y: cy - half_w },
+                    { x: cx - half_w, y: cy - half_w }
+                ];
+
+                p.moveTo(cx + (points[0].x - cx) * 1/SQRT_TWO - (points[0].y - cy) * 1/SQRT_TWO,
+                        cy + (points[0].x - cx) * 1/SQRT_TWO + (points[0].y - cy) * 1/SQRT_TWO);
+
+                for (let i = 1; i < points.length; i++) {
+                    const rotatedX = cx + (points[i].x - cx) * 1/SQRT_TWO - (points[i].y - cy) * 1/SQRT_TWO;
+                    const rotatedY = cy + (points[i].x - cx) * 1/SQRT_TWO + (points[i].y - cy) * 1/SQRT_TWO;
+                    p.lineTo(rotatedX, rotatedY);
+                }
+
+                p.closePath();
+            }
+        },
+        CROSS_1: {
+            draw: (x, y, s, w) => {
+                const { p, h, cx, cy } = initDrawForm(x, y, s, w);
+                const l = (s - 2*w) / 4;
+
+                p.moveTo(cx + 0, cy - l);
+                p.lineTo(cx + l, cy - h);
+                p.lineTo(cx + h, cy - l);
+                p.lineTo(cx + l, cy + 0);
+                p.lineTo(cx + h, cy + l);
+                p.lineTo(cx + l, cy + h);
+                p.lineTo(cx + 0, cy + l);
+                p.lineTo(cx - l, cy + h);
+                p.lineTo(cx - h, cy + l);
+                p.lineTo(cx - l, cy + 0);
+                p.lineTo(cx - h, cy - l);
+                p.lineTo(cx - l, cy - h);
+                p.closePath();
+            }
+        },
+        CROSS_2: {
+            draw: (x, y, s, w) => {
+                const { p, h, cx, cy } = initDrawForm(x, y, s, w);
+                const l = (s - 2*w) / 4;
+                const d = s/4;
+
+                p.moveTo(cx + 0, cy - l);
+                p.lineTo(cx + d, cy - h);
+                p.lineTo(cx + h, cy - d);
+                p.lineTo(cx + l, cy + 0);
+                p.lineTo(cx + h, cy + d);
+                p.lineTo(cx + d, cy + h);
+                p.lineTo(cx + 0, cy + l);
+                p.lineTo(cx - d, cy + h);
+                p.lineTo(cx - h, cy + d);
+                p.lineTo(cx - l, cy + 0);
+                p.lineTo(cx - h, cy - d);
+                p.lineTo(cx - d, cy - h);
+                p.closePath();
+            }
+        },
+        SHURIKEN_X: {
+            draw: (x, y, s, w) => {
+                const { p, h, cx, cy } = initDrawForm(x, y, s, w);
+                const l = (s - 2*w) / 4;
+
+                p.moveTo(cx - h, cy - h);
+                p.lineTo(cx + 0, cy - l);
+                p.lineTo(cx + h, cy - h);
+                p.lineTo(cx + l, cy + 0);
+                p.lineTo(cx + h, cy + h);
+                p.lineTo(cx + 0, cy + l);
+                p.lineTo(cx - h, cy + h);
+                p.lineTo(cx - l, cy + 0);
+                p.closePath();
+            }
+        },
+        SHURIKEN_PLUS: {
+            draw: (x, y, s, w) => {
+                const { p, h, cx, cy } = initDrawForm(x, y, s, w);
+                const l = (s - 2*w) / 6;
+
+                p.moveTo(cx + 0, cy - h);
+                p.lineTo(cx + l, cy - l);
+                p.lineTo(cx + h, cy + 0);
+                p.lineTo(cx + l, cy + l);
+                p.lineTo(cx + 0, cy + h);
+                p.lineTo(cx - l, cy + l);
+                p.lineTo(cx - h, cy + 0);
+                p.lineTo(cx - l, cy - l);
+                p.closePath();
+            }
+        },
+    }
+
+    const FORMS = [PointForm.CIRCLE, PointForm.SQUARE, PointForm.DIAMOND, PointForm.U_TRIANGLE, PointForm.D_TRIANGLE];
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    let x = 0;
+    let y = (MAX_SIZE+3)/2;
+
+    for (const key in PointForm) {
+        const pf = PointForm[key];
+        for (const s of SIZES) {
+            for (const w of WIDTHS) {
+                x += s+11;
+                pf.draw(x, y, s, w);
+            }
+        }
+
+        x = 0;
+        y += MAX_SIZE+11;
+    }
+
+    ctx.fillStyle = 'black';
+    // ctx.fill(pathCenter);
+
+    ctx.lineCap = 'square';
+    let index = 0;
+    for (const [width, path] of width2Path.entries()) {
+        ctx.strokeStyle = PALETTE_LIGHT[++index % PALETTE_LIGHT.length];
+        ctx.lineWidth = width;
+        ctx.stroke(path);
+    }
+</script>
+</body>
+</html>
